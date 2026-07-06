@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "ChordWarrior",
+    "slug": "chordwarrior",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#16181d"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chordwarrior.app"
+    },
+    "android": {
+      "package": "com.chordwarrior.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
