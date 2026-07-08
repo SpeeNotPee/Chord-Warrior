@@ -45,8 +45,6 @@ interface AppState {
   timerAutoContinue: boolean;
   timerAutoContinueSeconds: number;
 
-  /** Whether the on-screen piano is shown outside of "must always show" cases (a correct answer, or a timer reveal). */
-  pianoVisible: boolean;
   theme: Theme;
 
   progression: VoicedChord[];
@@ -67,7 +65,6 @@ interface AppState {
   setTimerDurationSeconds: (seconds: number) => void;
   setTimerAutoContinue: (auto: boolean) => void;
   setTimerAutoContinueSeconds: (seconds: number) => void;
-  setPianoVisible: (visible: boolean) => void;
   setTheme: (theme: Theme) => void;
 
   generateProgression: () => void;
@@ -111,7 +108,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   timerAutoContinue: true,
   timerAutoContinueSeconds: 4,
 
-  pianoVisible: true,
   theme: initialTheme(),
 
   progression: [],
@@ -150,7 +146,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTimerDurationSeconds: (timerDurationSeconds) => set({ timerDurationSeconds }),
   setTimerAutoContinue: (timerAutoContinue) => set({ timerAutoContinue }),
   setTimerAutoContinueSeconds: (timerAutoContinueSeconds) => set({ timerAutoContinueSeconds }),
-  setPianoVisible: (pianoVisible) => set({ pianoVisible }),
   setTheme: (theme) => {
     if (typeof localStorage !== 'undefined') localStorage.setItem(THEME_STORAGE_KEY, theme);
     set({ theme });

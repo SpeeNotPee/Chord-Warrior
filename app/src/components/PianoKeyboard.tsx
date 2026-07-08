@@ -15,20 +15,18 @@ function isWhiteKey(midi: MidiNote): boolean {
   return WHITE_PITCH_CLASSES.has(((midi % 12) + 12) % 12);
 }
 
-/** Small on-screen piano keyboard highlighting given MIDI notes, e.g. for a timer-expiry reveal. */
-export function PianoKeyboard({ highlightedNotes = [], playedNotes = [], width = 320, height = 100 }: PianoKeyboardProps) {
-  const allNotes = [...highlightedNotes, ...playedNotes];
-  const low = allNotes.length ? Math.min(...allNotes) - 2 : 60;
-  const high = allNotes.length ? Math.max(...allNotes) + 2 : 72;
-  const startMidi = Math.floor(low / 12) * 12; // round down to nearest C
-  const endMidi = Math.ceil(high / 12) * 12; // round up to nearest C
+// Full standard 88-key piano range: A0 (21) through C8 (108) inclusive.
+const START_MIDI = 21;
+const END_MIDI = 109;
 
+/** On-screen piano keyboard spanning the full 88-key range, highlighting given MIDI notes (e.g. for a timer-expiry reveal). */
+export function PianoKeyboard({ highlightedNotes = [], playedNotes = [], width = 1200, height = 110 }: PianoKeyboardProps) {
   const highlightedSet = new Set(highlightedNotes);
   const playedSet = new Set(playedNotes);
 
-  const midiRange = Array.from({ length: endMidi - startMidi }, (_, i) => startMidi + i);
+  const midiRange = Array.from({ length: END_MIDI - START_MIDI }, (_, i) => START_MIDI + i);
   const whiteCount = midiRange.filter(isWhiteKey).length;
-  const whiteWidth = width / Math.max(whiteCount, 1);
+  const whiteWidth = width / whiteCount;
   const blackWidth = whiteWidth * 0.6;
   const blackHeight = height * 0.6;
 
@@ -51,7 +49,13 @@ export function PianoKeyboard({ highlightedNotes = [], playedNotes = [], width =
   }
 
   return (
-    <svg className="piano-keyboard" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Piano keyboard">
+    <svg
+      className="piano-keyboard"
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label="Piano keyboard"
+    >
       {whiteKeys.map(({ midi, x }) => (
         <rect key={midi} x={x} y={0} width={whiteWidth} height={height} fill={keyFill(midi, false)} className="piano-keyboard__white-key" />
       ))}
