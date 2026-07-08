@@ -9,15 +9,16 @@ export type PitchStreamListener = (notes: MidiNote[]) => void;
 // interpolated peak-finding while roughly halving that latency vs. 16384.
 const FFT_SIZE = 8192;
 
-// Fast-attack/slow-release hysteresis: a note is reported as soon as it's
-// seen (magnitude gating in pitchDetector already rejects noise, so no extra
-// attack delay is needed), but once reported it survives several consecutive
-// missed frames before being dropped. Real played notes rarely hit the
-// detector at a constant magnitude every single frame (decay, vibrato, bow
-// noise), so requiring re-detection every frame made sustained notes flicker
-// away almost immediately — often before the UI even had time to show them.
-const ATTACK_FRAMES = 1;
-const RELEASE_FRAMES = 10;
+// Fast-attack/fast-release hysteresis: a note needs two consecutive raw
+// detections before it's reported, which is enough to reject one-off noise
+// blips (a stray overtone, a click) without adding perceptible latency
+// (~33ms at 60fps) for real played notes. The release window is kept short
+// on purpose — a longer grace period makes a genuinely deliberately-played
+// note survive brief dropouts, but it also means any spurious "extra" note
+// that does slip through (grading fails the instant there's an extra note
+// present) lingers and keeps grading incorrect long after the blip is gone.
+const ATTACK_FRAMES = 2;
+const RELEASE_FRAMES = 5;
 
 interface NoteTrackState {
   hits: number;

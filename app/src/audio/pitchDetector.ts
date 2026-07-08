@@ -22,7 +22,7 @@ export const DEFAULT_PITCH_DETECTION_OPTIONS: PitchDetectionOptions = {
   dbThreshold: -60,
   relativeThresholdDb: 30,
   maxNotes: 6,
-  harmonicToleranceCents: 40,
+  harmonicToleranceCents: 50,
 };
 
 interface Peak {
