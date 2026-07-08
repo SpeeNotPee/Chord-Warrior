@@ -3,14 +3,26 @@ import type { MidiNote } from '@chordwarrior/harmonic-engine';
 
 export type PitchStreamListener = (notes: MidiNote[]) => void;
 
-const FFT_SIZE = 16384;
+// A large FFT gives finer frequency resolution but also more group delay
+// (the window needs ~fftSize/sampleRate seconds of audio before a new note's
+// energy is fully represented). 8192 keeps resolution good enough for
+// interpolated peak-finding while roughly halving that latency vs. 16384.
+const FFT_SIZE = 8192;
 
-// A single noisy frame (footstep, click, breath) can inject a false note.
-// Requiring a note to show up in most of the last few frames before it's
-// reported filters those transients out; sustained played notes, which persist
-// across many frames, still pass through with negligible added latency.
-const STABILITY_WINDOW = 4;
-const STABILITY_MIN_HITS = 3;
+// Fast-attack/slow-release hysteresis: a note must show up in a couple of
+// consecutive frames before it's first reported (rejects single-frame noise
+// blips), but once reported it survives several consecutive missed frames
+// before being dropped. Real played notes rarely hit the detector at a
+// constant magnitude every single frame (decay, vibrato, bow noise), so a
+// symmetric debounce made sustained notes flicker away almost immediately.
+const ATTACK_FRAMES = 2;
+const RELEASE_FRAMES = 10;
+
+interface NoteTrackState {
+  hits: number;
+  misses: number;
+  active: boolean;
+}
 
 /**
  * Wraps getUserMedia + AnalyserNode into a continuously-running polyphonic
@@ -25,7 +37,7 @@ export class MicrophonePitchStream {
   private frameHandle: number | null = null;
   private listeners = new Set<PitchStreamListener>();
   private detectionOptions: Partial<PitchDetectionOptions>;
-  private recentFrames: MidiNote[][] = [];
+  private noteStates = new Map<MidiNote, NoteTrackState>();
 
   constructor(detectionOptions: Partial<PitchDetectionOptions> = {}) {
     this.detectionOptions = detectionOptions;
@@ -72,7 +84,7 @@ export class MicrophonePitchStream {
     this.analyser = null;
     this.mediaStream = null;
     this.audioContext = null;
-    this.recentFrames = [];
+    this.noteStates.clear();
   }
 
   onPitches(listener: PitchStreamListener): () => void {
@@ -85,28 +97,38 @@ export class MicrophonePitchStream {
     const magnitudes = new Float32Array(this.analyser.frequencyBinCount);
     this.analyser.getFloatFrequencyData(magnitudes);
 
-    const notes = detectPolyphonicPitches(magnitudes, this.audioContext.sampleRate, FFT_SIZE, this.detectionOptions);
+    const rawNotes = detectPolyphonicPitches(magnitudes, this.audioContext.sampleRate, FFT_SIZE, this.detectionOptions);
 
-    this.recentFrames.push(notes);
-    if (this.recentFrames.length > STABILITY_WINDOW) this.recentFrames.shift();
-
-    const stableNotes = this.selectStableNotes();
-    this.listeners.forEach((l) => l(stableNotes));
+    const activeNotes = this.updateNoteStates(rawNotes);
+    this.listeners.forEach((l) => l(activeNotes));
 
     this.frameHandle = requestAnimationFrame(this.tick);
   };
 
-  /** Keeps only notes that appeared in at least STABILITY_MIN_HITS of the recent frames. */
-  private selectStableNotes(): MidiNote[] {
-    const hitCounts = new Map<MidiNote, number>();
-    for (const frame of this.recentFrames) {
-      for (const note of frame) {
-        hitCounts.set(note, (hitCounts.get(note) ?? 0) + 1);
+  /** Advances the per-note attack/release counters from this frame's raw detections and returns the currently-active notes. */
+  private updateNoteStates(rawNotes: MidiNote[]): MidiNote[] {
+    const rawSet = new Set(rawNotes);
+
+    for (const [note, state] of this.noteStates) {
+      if (rawSet.has(note)) {
+        state.hits += 1;
+        state.misses = 0;
+        if (state.hits >= ATTACK_FRAMES) state.active = true;
+      } else {
+        state.misses += 1;
+        state.hits = 0;
+        if (state.misses >= RELEASE_FRAMES) this.noteStates.delete(note);
       }
     }
-    const minHits = Math.min(STABILITY_MIN_HITS, this.recentFrames.length);
-    return Array.from(hitCounts.entries())
-      .filter(([, count]) => count >= minHits)
+
+    for (const note of rawSet) {
+      if (!this.noteStates.has(note)) {
+        this.noteStates.set(note, { hits: 1, misses: 0, active: ATTACK_FRAMES <= 1 });
+      }
+    }
+
+    return Array.from(this.noteStates.entries())
+      .filter(([, state]) => state.active)
       .map(([note]) => note)
       .sort((a, b) => a - b);
   }
