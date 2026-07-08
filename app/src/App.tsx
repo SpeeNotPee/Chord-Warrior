@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { useChordValidator } from './hooks/useChordValidator';
-import { PROGRESSION_LIBRARY, SCALE_INTERVALS, SHARP_NAMES, type ScaleType } from '@chordwarrior/harmonic-engine';
+import { useChordTimer } from './hooks/useChordTimer';
+import { SCALE_INTERVALS, SHARP_NAMES, type MusicGrade, type ScaleType } from '@chordwarrior/harmonic-engine';
 import { InteractionModeView, INTERACTION_MODES, INTERACTION_MODE_LABELS } from './components/InteractionModeView';
 import { ClefToggle } from './components/ClefToggle';
+import { PianoKeyboard } from './components/PianoKeyboard';
+import type { NotationStyle } from './components/ChordNotationDisplay';
 import type { GradingStrictness } from './validation/grading';
 import './App.css';
 
@@ -13,35 +16,44 @@ const SCALE_TYPE_LABELS: Record<ScaleType, string> = {
   harmonicMinor: 'Harmonic Minor',
 };
 
-const CATEGORY_LABELS: Record<(typeof PROGRESSION_LIBRARY)[number]['category'], string> = {
-  baroque: 'Baroque / Classical',
-  jazz: 'Jazz',
-  pop: 'Pop / Rock',
+const NOTATION_STYLE_LABELS: Record<NotationStyle, string> = {
+  symbol: 'Chord Symbol',
+  roman: 'Roman Numeral',
+  figuredBass: 'Figured Bass',
 };
 
 function App() {
   const {
-    key,
-    tier,
-    progressionMode,
-    libraryProgressionId,
+    selectedRoots,
+    selectedScaleTypes,
+    keyVariety,
+    grade,
     algorithmicLength,
+    endlessMode,
     clef,
     notationStyle,
     interactionMode,
     strictness,
+    timerEnabled,
+    timerDurationSeconds,
+    timerAutoContinue,
+    timerAutoContinueSeconds,
     progression,
     currentIndex,
-    setKeyRoot,
-    setScaleType,
-    setTier,
-    setProgressionMode,
-    setLibraryProgressionId,
+    toggleRoot,
+    toggleScaleType,
+    setKeyVariety,
+    setGrade,
     setAlgorithmicLength,
+    setEndlessMode,
     setClef,
     setNotationStyle,
     setInteractionMode,
     setStrictness,
+    setTimerEnabled,
+    setTimerDurationSeconds,
+    setTimerAutoContinue,
+    setTimerAutoContinueSeconds,
     generateProgression,
     next,
     prev,
@@ -55,13 +67,32 @@ function App() {
   const currentChord = progression[currentIndex] ?? null;
   const { verifiedPitches, midi, audio, result } = useChordValidator(currentChord, strictness);
 
+  const timer = useChordTimer({
+    enabled: timerEnabled,
+    durationSeconds: timerDurationSeconds,
+    resetKey: currentIndex,
+    isSolved: !!result?.isCorrect,
+  });
+
+  // Reveal (timer expiry) takes precedence over the correct-answer auto-advance below.
   useEffect(() => {
-    if (result?.isCorrect) {
+    if (result?.isCorrect && !timer.expired) {
       const timeout = setTimeout(next, 700);
       return () => clearTimeout(timeout);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result?.isCorrect]);
+  }, [result?.isCorrect, timer.expired]);
+
+  useEffect(() => {
+    if (!timer.expired || !timerAutoContinue) return;
+    const timeout = setTimeout(next, timerAutoContinueSeconds * 1000);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer.expired, timerAutoContinue, timerAutoContinueSeconds]);
+
+  const romanNumeralAvailable = selectedRoots.length === 1 && selectedScaleTypes.length === 1;
+  const showKeyVariety = selectedRoots.length * selectedScaleTypes.length > 1;
+  const notationStyles: NotationStyle[] = ['symbol', ...(romanNumeralAvailable ? (['roman'] as const) : []), 'figuredBass'];
 
   return (
     <div className="app">
@@ -73,40 +104,62 @@ function App() {
       <div className="app__layout">
         <aside className="app__panel">
           <section className="control-group">
-            <h2>Progression Source</h2>
-            <div className="segmented">
-              <button
-                type="button"
-                className={progressionMode === 'library' ? 'segmented__button segmented__button--active' : 'segmented__button'}
-                onClick={() => setProgressionMode('library')}
-              >
-                Library
-              </button>
-              <button
-                type="button"
-                className={progressionMode === 'algorithmic' ? 'segmented__button segmented__button--active' : 'segmented__button'}
-                onClick={() => setProgressionMode('algorithmic')}
-              >
-                Algorithmic
-              </button>
+            <h2>Roots</h2>
+            <div className="checkbox-grid">
+              {SHARP_NAMES.map((name, pc) => (
+                <label key={name} className="checkbox-field">
+                  <input type="checkbox" checked={selectedRoots.includes(pc)} onChange={() => toggleRoot(pc)} />
+                  {name}
+                </label>
+              ))}
             </div>
+          </section>
 
-            {progressionMode === 'library' ? (
-              <label className="field">
-                Progression
-                <select value={libraryProgressionId} onChange={(e) => setLibraryProgressionId(e.target.value)}>
-                  {(['baroque', 'jazz', 'pop'] as const).map((category) => (
-                    <optgroup key={category} label={CATEGORY_LABELS[category]}>
-                      {PROGRESSION_LIBRARY.filter((p) => p.category === category).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </label>
-            ) : (
+          <section className="control-group">
+            <h2>Scale Qualities</h2>
+            <div className="checkbox-grid">
+              {(Object.keys(SCALE_INTERVALS) as ScaleType[]).map((st) => (
+                <label key={st} className="checkbox-field">
+                  <input type="checkbox" checked={selectedScaleTypes.includes(st)} onChange={() => toggleScaleType(st)} />
+                  {SCALE_TYPE_LABELS[st]}
+                </label>
+              ))}
+            </div>
+            {showKeyVariety && (
+              <div className="segmented" style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className={keyVariety === 'perProgression' ? 'segmented__button segmented__button--active' : 'segmented__button'}
+                  onClick={() => setKeyVariety('perProgression')}
+                >
+                  One key / progression
+                </button>
+                <button
+                  type="button"
+                  className={keyVariety === 'perChord' ? 'segmented__button segmented__button--active' : 'segmented__button'}
+                  onClick={() => setKeyVariety('perChord')}
+                >
+                  New key / chord
+                </button>
+              </div>
+            )}
+          </section>
+
+          <section className="control-group">
+            <h2>Grade</h2>
+            <label className="field">
+              Grade {grade}
+              <input type="range" min={1} max={8} value={grade} onChange={(e) => setGrade(Number(e.target.value) as MusicGrade)} />
+            </label>
+          </section>
+
+          <section className="control-group">
+            <h2>Progression</h2>
+            <label className="checkbox-field">
+              <input type="checkbox" checked={endlessMode} onChange={(e) => setEndlessMode(e.target.checked)} />
+              Endless Mode
+            </label>
+            {!endlessMode && (
               <label className="field">
                 Progression Length
                 <input
@@ -118,46 +171,6 @@ function App() {
                 />
               </label>
             )}
-          </section>
-
-          <section className="control-group">
-            <h2>Key &amp; Mode</h2>
-            <label className="field">
-              Root
-              <select value={key.root} onChange={(e) => setKeyRoot(Number(e.target.value))}>
-                {SHARP_NAMES.map((name, pc) => (
-                  <option key={name} value={pc}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Quality
-              <select value={key.scaleType} onChange={(e) => setScaleType(e.target.value as ScaleType)}>
-                {(Object.keys(SCALE_INTERVALS) as ScaleType[]).map((st) => (
-                  <option key={st} value={st}>
-                    {SCALE_TYPE_LABELS[st]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </section>
-
-          <section className="control-group">
-            <h2>Complexity Tier</h2>
-            <div className="segmented">
-              {[1, 2, 3].map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={tier === t ? 'segmented__button segmented__button--active' : 'segmented__button'}
-                  onClick={() => setTier(t as 1 | 2 | 3)}
-                >
-                  Tier {t}
-                </button>
-              ))}
-            </div>
           </section>
 
           <button type="button" className="generate-button" onClick={generateProgression}>
@@ -178,6 +191,44 @@ function App() {
                 </button>
               ))}
             </div>
+          </section>
+
+          <section className="control-group">
+            <h2>Timer</h2>
+            <label className="checkbox-field">
+              <input type="checkbox" checked={timerEnabled} onChange={(e) => setTimerEnabled(e.target.checked)} />
+              Enable Timer
+            </label>
+            {timerEnabled && (
+              <>
+                <label className="field">
+                  Duration (seconds)
+                  <input
+                    type="number"
+                    min={3}
+                    max={120}
+                    value={timerDurationSeconds}
+                    onChange={(e) => setTimerDurationSeconds(Number(e.target.value))}
+                  />
+                </label>
+                <label className="checkbox-field">
+                  <input type="checkbox" checked={timerAutoContinue} onChange={(e) => setTimerAutoContinue(e.target.checked)} />
+                  Auto-continue after reveal
+                </label>
+                {timerAutoContinue && (
+                  <label className="field">
+                    Auto-continue delay (seconds)
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={timerAutoContinueSeconds}
+                      onChange={(e) => setTimerAutoContinueSeconds(Number(e.target.value))}
+                    />
+                  </label>
+                )}
+              </>
+            )}
           </section>
 
           <section className="control-group">
@@ -216,20 +267,16 @@ function App() {
           {interactionMode === 'sheetMusic' && <ClefToggle clef={clef} onChange={setClef} />}
           {interactionMode === 'chordNotation' && (
             <div className="segmented">
-              <button
-                type="button"
-                className={notationStyle === 'symbol' ? 'segmented__button segmented__button--active' : 'segmented__button'}
-                onClick={() => setNotationStyle('symbol')}
-              >
-                Chord Symbol
-              </button>
-              <button
-                type="button"
-                className={notationStyle === 'roman' ? 'segmented__button segmented__button--active' : 'segmented__button'}
-                onClick={() => setNotationStyle('roman')}
-              >
-                Roman Numeral
-              </button>
+              {notationStyles.map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  className={notationStyle === style ? 'segmented__button segmented__button--active' : 'segmented__button'}
+                  onClick={() => setNotationStyle(style)}
+                >
+                  {NOTATION_STYLE_LABELS[style]}
+                </button>
+              ))}
             </div>
           )}
 
@@ -241,24 +288,37 @@ function App() {
             <button type="button" onClick={prev} disabled={progression.length === 0}>
               ← Prev
             </button>
-            <span>
-              {progression.length === 0 ? '0 / 0' : `${currentIndex + 1} / ${progression.length}`}
-            </span>
+            <span>{progression.length === 0 ? '0 / 0' : `${currentIndex + 1} / ${endlessMode ? '∞' : progression.length}`}</span>
             <button type="button" onClick={next} disabled={progression.length === 0}>
               Next →
             </button>
           </div>
 
-          <div className={`grading-feedback${result ? (result.isCorrect ? ' grading-feedback--correct' : ' grading-feedback--incorrect') : ''}`}>
-            <p>Verified pitches: {verifiedPitches.length > 0 ? verifiedPitches.join(', ') : '—'}</p>
-            {result && (
-              <p className="grading-feedback__status">
-                {result.isCorrect
-                  ? 'Correct!'
-                  : `Missing: [${result.missingPitchClasses.join(', ')}] Extra: [${result.extraNotes.join(', ')}]`}
-              </p>
-            )}
-          </div>
+          {timer.expired ? (
+            <div className="grading-feedback grading-feedback--incorrect">
+              <p className="grading-feedback__status">Time&apos;s up! Correct notes:</p>
+              <PianoKeyboard highlightedNotes={currentChord?.pitches ?? []} playedNotes={verifiedPitches} />
+              {!timerAutoContinue && (
+                <button type="button" onClick={next}>
+                  Continue
+                </button>
+              )}
+            </div>
+          ) : (
+            <div
+              className={`grading-feedback${result ? (result.isCorrect ? ' grading-feedback--correct' : ' grading-feedback--incorrect') : ''}`}
+            >
+              <p>Verified pitches: {verifiedPitches.length > 0 ? verifiedPitches.join(', ') : '—'}</p>
+              {result && (
+                <p className="grading-feedback__status">
+                  {result.isCorrect
+                    ? 'Correct!'
+                    : `Missing: [${result.missingPitchClasses.join(', ')}] Extra: [${result.extraNotes.join(', ')}]`}
+                </p>
+              )}
+              {timerEnabled && <p className="grading-feedback__timer">Time left: {timer.remainingSeconds}s</p>}
+            </div>
+          )}
         </main>
       </div>
     </div>

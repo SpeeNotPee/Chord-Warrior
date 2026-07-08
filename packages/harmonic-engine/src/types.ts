@@ -54,21 +54,12 @@ export type FunctionalCategory = 'tonic' | 'predominant' | 'dominant';
 
 export type ComplexityTier = 1 | 2 | 3;
 
-export interface ProgressionEntry {
-  id: string;
-  name: string;
-  category: 'baroque' | 'jazz' | 'pop';
-  /** Scale type this progression is idiomatically written against. */
-  scaleType: ScaleType;
-  /** Roman-numeral tokens, e.g. ["ii7", "V7", "IM7"], parsed by the roman-numeral module. */
-  degrees: string[];
-  description: string;
-}
-
 export interface GenerationOptions {
   key: KeyCenter;
   tier: ComplexityTier;
   length: number;
+  /** Chance [0,1] that a tier-3-eligible chord is actually decorated to an extended/altered formula. Defaults to 1. */
+  decorateProbability?: number;
   /** Minimize movement of common tones between adjacent chords. Default true. */
   voiceLead?: boolean;
   /** MIDI range the voicing should stay within. */

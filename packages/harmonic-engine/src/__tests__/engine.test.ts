@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { CHORD_FORMULAS } from '../chordFormulas';
 import { diatonicChords } from '../scales';
 import { chordToSymbol } from '../chordSymbols';
-import { chordToRomanNumeral, parseProgression, parseRomanToken } from '../romanNumerals';
+import { chordToRomanNumeral } from '../romanNumerals';
+import { chordToFiguredBass } from '../figuredBass';
 import { buildVoicing, voiceProgression } from '../chordBuilder';
-import { PROGRESSION_LIBRARY } from '../library';
-import { generateAlgorithmicProgression } from '../algorithmicEngine';
+import { generateAlgorithmicProgression, generateNextChord } from '../algorithmicEngine';
 import { HarmonicEngine } from '../harmonicEngine';
+import { GRADE_PROFILES, MUSIC_GRADES } from '../grades';
 import { frequencyToMidi, midiToFrequency, noteNameToPitchClass, pitchClassToName } from '../notes';
-import type { KeyCenter } from '../types';
+import type { ChordSpec, KeyCenter } from '../types';
 
 describe('notes', () => {
   it('round-trips note name <-> pitch class', () => {
@@ -58,58 +59,39 @@ describe('chordToSymbol', () => {
   });
 });
 
-describe('roman numeral parsing', () => {
+describe('chordToRomanNumeral', () => {
   const cMajor: KeyCenter = { root: 0, scaleType: 'major' };
 
-  it('parses plain diatonic triads', () => {
-    const ii = parseRomanToken('ii', cMajor);
-    expect(ii.root).toBe(2); // D
-    expect(ii.formula.id).toBe('minor');
-  });
-
-  it('parses diatonic 7th chords using the real diatonic quality', () => {
-    const V7 = parseRomanToken('V7', cMajor);
-    expect(V7.root).toBe(7); // G
-    expect(V7.formula.id).toBe('dom7');
-
-    const IM7 = parseRomanToken('IΔ7', cMajor);
-    expect(IM7.root).toBe(0);
-    expect(IM7.formula.id).toBe('maj7');
-  });
-
-  it('parses secondary dominants relative to the tonicized degree', () => {
-    // V7/V in C major = D major triad root a 5th above G (V) -> root D, dominant7
-    const secondaryV = parseRomanToken('V7/V', cMajor);
-    expect(secondaryV.root).toBe(2); // D
-    expect(secondaryV.formula.id).toBe('dom7');
-  });
-
-  it('parses chromatic tritone substitution (bII7)', () => {
-    const tritoneSub = parseRomanToken('bII7', cMajor);
-    expect(tritoneSub.root).toBe(1); // Db
-    expect(tritoneSub.formula.id).toBe('dom7');
-  });
-
-  it('round-trips chordToRomanNumeral for diatonic chords', () => {
-    const ii7 = parseRomanToken('ii7', cMajor);
+  it('formats diatonic triads and sevenths relative to the key', () => {
+    const ii7: ChordSpec = { root: 2, formula: CHORD_FORMULAS.min7 };
     expect(chordToRomanNumeral(ii7, cMajor)).toBe('ii7');
 
-    const V = parseRomanToken('V', cMajor);
+    const V: ChordSpec = { root: 7, formula: CHORD_FORMULAS.major };
     expect(chordToRomanNumeral(V, cMajor)).toBe('V');
+
+    const I: ChordSpec = { root: 0, formula: CHORD_FORMULAS.maj7 };
+    expect(chordToRomanNumeral(I, cMajor)).toBe('IΔ7');
   });
 
-  it('parses every token in the static progression library without throwing', () => {
-    for (const entry of PROGRESSION_LIBRARY) {
-      const key: KeyCenter = { root: 0, scaleType: entry.scaleType };
-      expect(() => parseProgression(entry.degrees, key)).not.toThrow();
-    }
+  it('marks a chromatic (non-diatonic) root with an accidental prefix', () => {
+    const chromaticRoot: ChordSpec = { root: 1, formula: CHORD_FORMULAS.dom7 };
+    expect(chordToRomanNumeral(chromaticRoot, cMajor)).toBe('#I7');
+  });
+});
+
+describe('chordToFiguredBass', () => {
+  it('formats root-position figures for triads and extended chords', () => {
+    expect(chordToFiguredBass({ root: 0, formula: CHORD_FORMULAS.major })).toBe('5');
+    expect(chordToFiguredBass({ root: 0, formula: CHORD_FORMULAS.dom7 })).toBe('7');
+    expect(chordToFiguredBass({ root: 0, formula: CHORD_FORMULAS.min7b5 })).toBe('7♭5');
+    expect(chordToFiguredBass({ root: 0, formula: CHORD_FORMULAS.dom9 })).toBe('9');
+    expect(chordToFiguredBass({ root: 0, formula: CHORD_FORMULAS.dom13 })).toBe('13');
   });
 });
 
 describe('voice leading', () => {
   it('produces an ascending stacked voicing for a triad', () => {
-    const key: KeyCenter = { root: 0, scaleType: 'major' };
-    const chord = parseRomanToken('I', key);
+    const chord: ChordSpec = { root: 0, formula: CHORD_FORMULAS.major };
     const voicing = buildVoicing(chord, { range: [48, 84] });
     expect(voicing.length).toBe(3);
     expect(voicing[0] < voicing[1] && voicing[1] < voicing[2]).toBe(true);
@@ -117,7 +99,11 @@ describe('voice leading', () => {
 
   it('minimizes movement between adjacent chords sharing common tones (I -> V should keep some voices close)', () => {
     const key: KeyCenter = { root: 0, scaleType: 'major' };
-    const chords = parseProgression(['I', 'V', 'I'], key);
+    const chords: ChordSpec[] = [
+      { root: 0, formula: CHORD_FORMULAS.major },
+      { root: 7, formula: CHORD_FORMULAS.major },
+      { root: 0, formula: CHORD_FORMULAS.major },
+    ];
     const voiced = voiceProgression(chords, key);
     expect(voiced).toHaveLength(3);
     // total movement between consecutive chords should be modest (well below a naive re-stack from range floor each time)
@@ -155,16 +141,64 @@ describe('algorithmic engine', () => {
     const tier3 = generateAlgorithmicProgression({ key, tier: 3, length: 4, rng });
     expect(tier3.some((c) => c.formula.tier === 3)).toBe(true);
   });
+
+  it('never decorates to tier 3 when decorateProbability is 0', () => {
+    const key: KeyCenter = { root: 0, scaleType: 'major' };
+    const rng = () => 0.5;
+    const chords = generateAlgorithmicProgression({ key, tier: 3, length: 8, decorateProbability: 0, rng });
+    expect(chords.every((c) => c.formula.tier <= 2)).toBe(true);
+  });
+
+  describe('generateNextChord', () => {
+    it('starts a fresh chain on the tonic when prevState is null', () => {
+      const key: KeyCenter = { root: 0, scaleType: 'major' };
+      const { state } = generateNextChord(null, { key, tier: 1, rng: () => 0 });
+      expect(state.category).toBe('tonic');
+    });
+
+    it('forces degree 0 (the tonic root) and tonic category when isCadence is true', () => {
+      const key: KeyCenter = { root: 2, scaleType: 'major' };
+      const { chord, state } = generateNextChord({ category: 'dominant' }, { key, tier: 1, isCadence: true, rng: () => 0.9 });
+      expect(chord.root).toBe(2);
+      expect(state.category).toBe('tonic');
+    });
+
+    it('can be chained to stream chords one at a time, matching a fixed-length loop', () => {
+      const key: KeyCenter = { root: 0, scaleType: 'major' };
+      let seed = 7;
+      const rng = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return (seed % 10000) / 10000;
+      };
+
+      let state = null as ReturnType<typeof generateNextChord>['state'] | null;
+      const streamed: ChordSpec[] = [];
+      for (let i = 0; i < 5; i++) {
+        const step = generateNextChord(state, { key, tier: 1, rng });
+        streamed.push(step.chord);
+        state = step.state;
+      }
+      expect(streamed).toHaveLength(5);
+      expect(streamed.every((c) => c.formula.tier <= 1)).toBe(true);
+    });
+  });
+});
+
+describe('GRADE_PROFILES', () => {
+  it('defines all 8 grades with non-decreasing chord tier as grade increases', () => {
+    expect(MUSIC_GRADES).toHaveLength(8);
+    let prevTier = 0;
+    for (const grade of MUSIC_GRADES) {
+      const profile = GRADE_PROFILES[grade];
+      expect(profile.chordTier).toBeGreaterThanOrEqual(prevTier);
+      prevTier = profile.chordTier;
+      expect(profile.lengthRange[0]).toBeLessThanOrEqual(profile.lengthRange[1]);
+      expect(profile.range[0]).toBeLessThan(profile.range[1]);
+    }
+  });
 });
 
 describe('HarmonicEngine', () => {
-  it('generates voiced chords from the static library', () => {
-    const engine = new HarmonicEngine();
-    const key: KeyCenter = { root: 0, scaleType: 'major' };
-    const voiced = engine.generateFromLibrary('ii-V-I-major', key);
-    expect(voiced.map((v) => v.symbol)).toEqual(['Dm7', 'G7', 'CΔ7']);
-  });
-
   it('generates voiced chords algorithmically', () => {
     const engine = new HarmonicEngine();
     const voiced = engine.generateAlgorithmic({ key: { root: 2, scaleType: 'major' }, tier: 1, length: 4 });

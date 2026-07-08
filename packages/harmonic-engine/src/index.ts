@@ -5,6 +5,7 @@ export * from './scales';
 export * from './romanNumerals';
 export * from './chordSymbols';
 export * from './chordBuilder';
-export * from './library';
 export * from './algorithmicEngine';
 export * from './harmonicEngine';
+export * from './grades';
+export * from './figuredBass';

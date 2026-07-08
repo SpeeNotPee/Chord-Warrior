@@ -81,23 +81,59 @@ function pickDegreeForCategory(scaleType: ScaleType, category: FunctionalCategor
   );
 }
 
-function decorateToTier(baseFormula: ChordFormula, tier: ComplexityTier, rng: () => number): ChordFormula {
+function decorateToTier(baseFormula: ChordFormula, tier: ComplexityTier, rng: () => number, decorateProbability: number): ChordFormula {
   if (tier <= baseFormula.tier || tier < 2) return baseFormula;
-  if (tier === 2) {
-    // Already tier-2-or-below formulas pass through; nothing further to do here since
-    // diatonicChords already supplies the 7th-chord formula when requested.
-    return baseFormula;
-  }
+  if (tier === 2) return baseFormula;
+  if (rng() >= decorateProbability) return baseFormula;
   const pool = TIER3_POOL[baseFormula.category];
   if (!pool || pool.length === 0) return baseFormula;
   const choiceId = pool[Math.floor(rng() * pool.length)];
   return CHORD_FORMULAS[choiceId] ?? baseFormula;
 }
 
+/** Carries the Markov chain's functional-harmony position from one generated chord to the next. */
+export interface StepState {
+  category: FunctionalCategory;
+}
+
+export interface NextChordParams {
+  key: KeyCenter;
+  tier: ComplexityTier;
+  /** Chance [0,1] that a tier-3-eligible chord is actually decorated to an extended/altered formula. Defaults to 1. */
+  decorateProbability?: number;
+  /** Force this step to resolve to the tonic degree (a satisfying final cadence). */
+  isCadence?: boolean;
+  /** Injectable RNG for deterministic tests; defaults to Math.random. */
+  rng?: () => number;
+}
+
+/**
+ * Generate a single next chord in the functional-harmony Markov chain, given
+ * the previous step's state (or null to start a fresh chain on the tonic).
+ * This is the shared primitive behind both `generateAlgorithmicProgression`
+ * (a fixed-length loop over this function) and endless-mode chord streaming,
+ * where the app calls this once per `next()` press.
+ */
+export function generateNextChord(prevState: StepState | null, params: NextChordParams): { chord: ChordSpec; state: StepState } {
+  const { key, tier, isCadence = false, decorateProbability = 1 } = params;
+  const rng = params.rng ?? Math.random;
+  const diatonic = diatonicChords(key);
+
+  const category: FunctionalCategory = isCadence ? 'tonic' : prevState ? nextCategory(prevState.category, rng) : 'tonic';
+  const degreeIndex = isCadence ? 0 : pickDegreeForCategory(key.scaleType, category, rng);
+  const degree = diatonic[degreeIndex];
+  const baseFormula = tier === 1 ? degree.triad : degree.seventh ?? degree.triad;
+  const formula = decorateToTier(baseFormula, tier, rng, decorateProbability);
+
+  return { chord: { root: degree.root, formula }, state: { category } };
+}
+
 export interface AlgorithmicGenerationParams {
   key: KeyCenter;
   tier: ComplexityTier;
   length: number;
+  /** Chance [0,1] that a tier-3-eligible chord is actually decorated to an extended/altered formula. Defaults to 1. */
+  decorateProbability?: number;
   /** Injectable RNG for deterministic tests; defaults to Math.random. */
   rng?: () => number;
 }
@@ -106,28 +142,20 @@ export interface AlgorithmicGenerationParams {
  * Procedurally generate a chord progression using a Markov-chain model of
  * functional harmony (Tonic -> Predominant -> Dominant -> Tonic tendencies),
  * constrained to the given key's diatonic scale degrees and decorated up to
- * the requested complexity tier.
+ * the requested complexity tier. Resolves to a satisfying final cadence on
+ * the tonic degree.
  */
 export function generateAlgorithmicProgression(params: AlgorithmicGenerationParams): ChordSpec[] {
-  const { key, tier, length } = params;
+  const { key, tier, length, decorateProbability } = params;
   const rng = params.rng ?? Math.random;
-  const diatonic = diatonicChords(key);
 
-  const categories: FunctionalCategory[] = ['tonic'];
-  for (let i = 1; i < length; i++) {
-    categories.push(nextCategory(categories[i - 1], rng));
+  const chords: ChordSpec[] = [];
+  let state: StepState | null = null;
+  for (let i = 0; i < length; i++) {
+    const isCadence = i === length - 1 && length > 1;
+    const step = generateNextChord(state, { key, tier, decorateProbability, isCadence, rng });
+    chords.push(step.chord);
+    state = step.state;
   }
-  // Resolve to a satisfying final cadence on the tonic degree.
-  if (length > 1) categories[length - 1] = 'tonic';
-
-  const chords: ChordSpec[] = categories.map((category, i) => {
-    const degreeIndex =
-      i === length - 1 && length > 1 ? 0 : pickDegreeForCategory(key.scaleType, category, rng);
-    const degree = diatonic[degreeIndex];
-    const baseFormula = tier === 1 ? degree.triad : degree.seventh ?? degree.triad;
-    const formula = decorateToTier(baseFormula, tier, rng);
-    return { root: degree.root, formula };
-  });
-
   return chords;
 }
