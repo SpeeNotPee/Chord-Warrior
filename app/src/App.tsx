@@ -118,6 +118,9 @@ function App() {
   const notationStyles: NotationStyle[] = ['symbol', ...(romanNumeralAvailable ? (['roman'] as const) : []), 'figuredBass'];
   // The piano is always shown on a correct answer or a timer reveal, regardless of the visibility toggle.
   const showPiano = pianoVisible || !!result?.isCorrect || timer.expired;
+  // Never reveal the target chord on the piano during normal play -- only a timer expiry reveals the answer.
+  // A correct answer highlights green via the player's own (matching) notes, not by exposing the target directly.
+  const pianoHighlightedNotes = timer.expired ? currentChord?.pitches ?? [] : result?.isCorrect ? verifiedPitches : [];
 
   return (
     <div className="app">
@@ -357,7 +360,7 @@ function App() {
               </p>
             )}
             {!timer.expired && timerEnabled && <p className="grading-feedback__timer">Time left: {timer.remainingSeconds}s</p>}
-            {showPiano && <PianoKeyboard highlightedNotes={currentChord?.pitches ?? []} playedNotes={verifiedPitches} />}
+            {showPiano && <PianoKeyboard highlightedNotes={pianoHighlightedNotes} playedNotes={verifiedPitches} />}
             {timer.expired && !timerAutoContinue && (
               <button type="button" onClick={next}>
                 Continue
