@@ -1,5 +1,8 @@
 :root {
   color-scheme: light dark;
+}
+
+:root[data-theme='dark'] {
   --bg: #16181d;
   --panel: #1e2128;
   --border: #2e323b;
@@ -10,6 +13,19 @@
   --incorrect: #ef5a6f;
   --piano-key-white: #f4f4f4;
   --piano-key-black: #1a1a1a;
+}
+
+:root[data-theme='light'] {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --border: #d7dbe2;
+  --text: #1b1e24;
+  --muted: #656d7a;
+  --accent: #3868e0;
+  --correct: #1f9d5c;
+  --incorrect: #d13a4f;
+  --piano-key-white: #ffffff;
+  --piano-key-black: #24262b;
 }
 
 * {

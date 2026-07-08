@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAppStore } from './store/useAppStore';
+import { useAppStore, type Theme } from './store/useAppStore';
 import { useChordValidator } from './hooks/useChordValidator';
 import { useChordTimer } from './hooks/useChordTimer';
 import { SCALE_INTERVALS, SHARP_NAMES, type MusicGrade, type ScaleType } from '@chordwarrior/harmonic-engine';
@@ -22,6 +22,12 @@ const NOTATION_STYLE_LABELS: Record<NotationStyle, string> = {
   figuredBass: 'Figured Bass',
 };
 
+const THEME_LABELS: Record<Theme, string> = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'System',
+};
+
 function App() {
   const {
     selectedRoots,
@@ -38,6 +44,8 @@ function App() {
     timerDurationSeconds,
     timerAutoContinue,
     timerAutoContinueSeconds,
+    pianoVisible,
+    theme,
     progression,
     currentIndex,
     toggleRoot,
@@ -54,6 +62,8 @@ function App() {
     setTimerDurationSeconds,
     setTimerAutoContinue,
     setTimerAutoContinueSeconds,
+    setPianoVisible,
+    setTheme,
     generateProgression,
     next,
     prev,
@@ -63,6 +73,19 @@ function App() {
     generateProgression();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyResolvedTheme = () => {
+      const resolved = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+      root.dataset.theme = resolved;
+    };
+    applyResolvedTheme();
+    if (theme !== 'system') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    mql.addEventListener('change', applyResolvedTheme);
+    return () => mql.removeEventListener('change', applyResolvedTheme);
+  }, [theme]);
 
   const currentChord = progression[currentIndex] ?? null;
   const { verifiedPitches, midi, audio, result } = useChordValidator(currentChord, strictness);
@@ -93,6 +116,8 @@ function App() {
   const romanNumeralAvailable = selectedRoots.length === 1 && selectedScaleTypes.length === 1;
   const showKeyVariety = selectedRoots.length * selectedScaleTypes.length > 1;
   const notationStyles: NotationStyle[] = ['symbol', ...(romanNumeralAvailable ? (['roman'] as const) : []), 'figuredBass'];
+  // The piano is always shown on a correct answer or a timer reveal, regardless of the visibility toggle.
+  const showPiano = pianoVisible || !!result?.isCorrect || timer.expired;
 
   return (
     <div className="app">
@@ -232,6 +257,26 @@ function App() {
           </section>
 
           <section className="control-group">
+            <h2>Display</h2>
+            <div className="segmented">
+              {(['light', 'dark', 'system'] as Theme[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={theme === t ? 'segmented__button segmented__button--active' : 'segmented__button'}
+                  onClick={() => setTheme(t)}
+                >
+                  {THEME_LABELS[t]}
+                </button>
+              ))}
+            </div>
+            <label className="checkbox-field" style={{ marginTop: '0.5rem' }}>
+              <input type="checkbox" checked={pianoVisible} onChange={(e) => setPianoVisible(e.target.checked)} />
+              Show On-Screen Piano
+            </label>
+          </section>
+
+          <section className="control-group">
             <h2>Input</h2>
             <div className="input-status">
               <span>MIDI: {midi.isActive ? 'Active' : midi.isSupported ? 'Idle' : 'Unsupported'}</span>
@@ -294,31 +339,31 @@ function App() {
             </button>
           </div>
 
-          {timer.expired ? (
-            <div className="grading-feedback grading-feedback--incorrect">
+          <div
+            className={`grading-feedback${
+              timer.expired ? ' grading-feedback--incorrect' : result ? (result.isCorrect ? ' grading-feedback--correct' : ' grading-feedback--incorrect') : ''
+            }`}
+          >
+            {timer.expired ? (
               <p className="grading-feedback__status">Time&apos;s up! Correct notes:</p>
-              <PianoKeyboard highlightedNotes={currentChord?.pitches ?? []} playedNotes={verifiedPitches} />
-              {!timerAutoContinue && (
-                <button type="button" onClick={next}>
-                  Continue
-                </button>
-              )}
-            </div>
-          ) : (
-            <div
-              className={`grading-feedback${result ? (result.isCorrect ? ' grading-feedback--correct' : ' grading-feedback--incorrect') : ''}`}
-            >
+            ) : (
               <p>Verified pitches: {verifiedPitches.length > 0 ? verifiedPitches.join(', ') : '—'}</p>
-              {result && (
-                <p className="grading-feedback__status">
-                  {result.isCorrect
-                    ? 'Correct!'
-                    : `Missing: [${result.missingPitchClasses.join(', ')}] Extra: [${result.extraNotes.join(', ')}]`}
-                </p>
-              )}
-              {timerEnabled && <p className="grading-feedback__timer">Time left: {timer.remainingSeconds}s</p>}
-            </div>
-          )}
+            )}
+            {!timer.expired && result && (
+              <p className="grading-feedback__status">
+                {result.isCorrect
+                  ? 'Correct!'
+                  : `Missing: [${result.missingPitchClasses.join(', ')}] Extra: [${result.extraNotes.join(', ')}]`}
+              </p>
+            )}
+            {!timer.expired && timerEnabled && <p className="grading-feedback__timer">Time left: {timer.remainingSeconds}s</p>}
+            {showPiano && <PianoKeyboard highlightedNotes={currentChord?.pitches ?? []} playedNotes={verifiedPitches} />}
+            {timer.expired && !timerAutoContinue && (
+              <button type="button" onClick={next}>
+                Continue
+              </button>
+            )}
+          </div>
         </main>
       </div>
     </div>

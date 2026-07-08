@@ -16,6 +16,15 @@ import type { InteractionMode } from '../components/InteractionModeView';
 import type { GradingStrictness } from '../validation/grading';
 
 export type KeyVariety = 'perProgression' | 'perChord';
+export type Theme = 'light' | 'dark' | 'system';
+
+const THEME_STORAGE_KEY = 'chordwarrior:theme';
+
+function initialTheme(): Theme {
+  if (typeof localStorage === 'undefined') return 'system';
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+}
 
 interface AppState {
   selectedRoots: number[];
@@ -36,6 +45,10 @@ interface AppState {
   timerAutoContinue: boolean;
   timerAutoContinueSeconds: number;
 
+  /** Whether the on-screen piano is shown outside of "must always show" cases (a correct answer, or a timer reveal). */
+  pianoVisible: boolean;
+  theme: Theme;
+
   progression: VoicedChord[];
   currentIndex: number;
   stepState: StepState | null;
@@ -54,6 +67,8 @@ interface AppState {
   setTimerDurationSeconds: (seconds: number) => void;
   setTimerAutoContinue: (auto: boolean) => void;
   setTimerAutoContinueSeconds: (seconds: number) => void;
+  setPianoVisible: (visible: boolean) => void;
+  setTheme: (theme: Theme) => void;
 
   generateProgression: () => void;
   next: () => void;
@@ -96,6 +111,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   timerAutoContinue: true,
   timerAutoContinueSeconds: 4,
 
+  pianoVisible: true,
+  theme: initialTheme(),
+
   progression: [],
   currentIndex: 0,
   stepState: null,
@@ -132,6 +150,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTimerDurationSeconds: (timerDurationSeconds) => set({ timerDurationSeconds }),
   setTimerAutoContinue: (timerAutoContinue) => set({ timerAutoContinue }),
   setTimerAutoContinueSeconds: (timerAutoContinueSeconds) => set({ timerAutoContinueSeconds }),
+  setPianoVisible: (pianoVisible) => set({ pianoVisible }),
+  setTheme: (theme) => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(THEME_STORAGE_KEY, theme);
+    set({ theme });
+  },
 
   generateProgression: () => {
     const s = get();
