@@ -49,4 +49,18 @@ describe('detectPolyphonicPitches', () => {
     const notes = detectPolyphonicPitches(spectrum, SAMPLE_RATE, FFT_SIZE, { maxNotes: 3 });
     expect(notes.length).toBeLessThanOrEqual(3);
   });
+
+  it('rejects quiet ambient noise peaks that sit above the absolute floor but well below the played note', () => {
+    const spectrum = synthesizeSpectrum([440], -100);
+    const binHz = SAMPLE_RATE / FFT_SIZE;
+    // A hum-like peak at 120Hz, loud enough to clear the absolute dB floor
+    // on its own, but far quieter than the actual played note.
+    const humBin = Math.round(120 / binHz);
+    spectrum[humBin] = -55;
+    spectrum[humBin - 1] = -70;
+    spectrum[humBin + 1] = -70;
+
+    const notes = detectPolyphonicPitches(spectrum, SAMPLE_RATE, FFT_SIZE);
+    expect(notes).toEqual([69]);
+  });
 });

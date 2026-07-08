@@ -5,6 +5,12 @@ export interface PitchDetectionOptions {
   maxFrequency: number;
   /** Magnitude (dB) threshold below which bins are ignored as noise floor. */
   dbThreshold: number;
+  /**
+   * Peaks quieter than (loudest peak in the frame - this many dB) are discarded.
+   * Ambient noise is almost always much quieter than a deliberately played note,
+   * so this relative gate rejects it even when it sits above the absolute floor.
+   */
+  relativeThresholdDb: number;
   maxNotes: number;
   /** Tolerance (in cents) used when deciding whether a peak is a harmonic overtone of an already-accepted fundamental. */
   harmonicToleranceCents: number;
@@ -13,7 +19,8 @@ export interface PitchDetectionOptions {
 export const DEFAULT_PITCH_DETECTION_OPTIONS: PitchDetectionOptions = {
   minFrequency: 60,
   maxFrequency: 2000,
-  dbThreshold: -65,
+  dbThreshold: -60,
+  relativeThresholdDb: 30,
   maxNotes: 6,
   harmonicToleranceCents: 40,
 };
@@ -46,14 +53,16 @@ function findPeaks(
   const maxBin = Math.min(magnitudes.length - 2, Math.ceil(opts.maxFrequency / binHz));
 
   const peaks: Peak[] = [];
+  let loudest = -Infinity;
   for (let i = minBin; i <= maxBin; i++) {
     const m = magnitudes[i];
     if (m < opts.dbThreshold) continue;
     if (m >= magnitudes[i - 1] && m >= magnitudes[i + 1] && (m > magnitudes[i - 1] || m > magnitudes[i + 1])) {
+      if (m > loudest) loudest = m;
       peaks.push({ frequency: interpolatePeak(magnitudes, i, sampleRate, fftSize), magnitude: m });
     }
   }
-  return peaks;
+  return peaks.filter((p) => p.magnitude >= loudest - opts.relativeThresholdDb);
 }
 
 function centsDifference(freqA: number, freqB: number): number {
