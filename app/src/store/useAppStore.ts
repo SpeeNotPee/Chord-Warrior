@@ -19,11 +19,17 @@ export type KeyVariety = 'perProgression' | 'perChord';
 export type Theme = 'light' | 'dark' | 'system';
 
 const THEME_STORAGE_KEY = 'chordwarrior:theme';
+const PIANO_LABELS_STORAGE_KEY = 'chordwarrior:pianoLabels';
 
 function initialTheme(): Theme {
   if (typeof localStorage === 'undefined') return 'system';
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
   return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+}
+
+function initialPianoLabels(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  return localStorage.getItem(PIANO_LABELS_STORAGE_KEY) === 'true';
 }
 
 interface AppState {
@@ -46,6 +52,8 @@ interface AppState {
   timerAutoContinueSeconds: number;
 
   theme: Theme;
+  /** Show note-name labels (e.g. C4, F#5) on the on-screen keyboard. */
+  pianoLabels: boolean;
 
   progression: VoicedChord[];
   currentIndex: number;
@@ -66,6 +74,7 @@ interface AppState {
   setTimerAutoContinue: (auto: boolean) => void;
   setTimerAutoContinueSeconds: (seconds: number) => void;
   setTheme: (theme: Theme) => void;
+  setPianoLabels: (show: boolean) => void;
 
   generateProgression: () => void;
   next: () => void;
@@ -109,6 +118,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   timerAutoContinueSeconds: 4,
 
   theme: initialTheme(),
+  pianoLabels: initialPianoLabels(),
 
   progression: [],
   currentIndex: 0,
@@ -149,6 +159,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTheme: (theme) => {
     if (typeof localStorage !== 'undefined') localStorage.setItem(THEME_STORAGE_KEY, theme);
     set({ theme });
+  },
+  setPianoLabels: (pianoLabels) => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(PIANO_LABELS_STORAGE_KEY, String(pianoLabels));
+    set({ pianoLabels });
   },
 
   generateProgression: () => {

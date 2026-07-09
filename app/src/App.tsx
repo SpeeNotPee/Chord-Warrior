@@ -45,6 +45,7 @@ function App() {
     timerAutoContinue,
     timerAutoContinueSeconds,
     theme,
+    pianoLabels,
     progression,
     currentIndex,
     toggleRoot,
@@ -62,6 +63,7 @@ function App() {
     setTimerAutoContinue,
     setTimerAutoContinueSeconds,
     setTheme,
+    setPianoLabels,
     generateProgression,
     next,
     prev,
@@ -121,8 +123,29 @@ function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <h1>ChordWarrior</h1>
-        <p className="app__subtitle">Sight-reading, ear-training &amp; chord recognition drills</p>
+        <div className="app__masthead">
+          <h1>ChordWarrior</h1>
+          <p className="app__subtitle">Sight-reading, ear-training &amp; chord recognition drills</p>
+        </div>
+        {/* TODO: replace href="#" with real profile URLs. */}
+        <nav className="app__socials" aria-label="Social links">
+          <a className="app__social" href="#" aria-label="GitHub" title="GitHub" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+            </svg>
+          </a>
+          <a className="app__social" href="#" aria-label="Discord" title="Discord" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
+              <path d="M13.55 3.02A13.06 13.06 0 0 0 10.3 2l-.16.33c1.06.26 1.94.7 2.76 1.27-1.43-.78-2.85-1.27-5.05-1.27S4.24 2.62 2.8 3.4c.82-.57 1.7-1.01 2.76-1.27L5.4 2c-1.14.2-2.24.55-3.25 1.02C.34 6.16-.15 9.22.09 12.24a13.2 13.2 0 0 0 3.98 2c.32-.44.6-.9.85-1.4-.47-.17-.92-.39-1.35-.65.11-.08.22-.17.33-.25 2.6 1.2 5.42 1.2 7.99 0 .11.09.22.17.33.25-.43.26-.88.47-1.35.65.24.5.53.96.85 1.4a13.14 13.14 0 0 0 3.98-2c.29-3.5-.5-6.54-2.15-9.22ZM5.35 10.4c-.79 0-1.44-.72-1.44-1.6 0-.89.63-1.61 1.44-1.61.8 0 1.45.72 1.44 1.6 0 .89-.64 1.61-1.44 1.61Zm5.3 0c-.79 0-1.44-.72-1.44-1.6 0-.89.63-1.61 1.44-1.61.8 0 1.45.72 1.44 1.6 0 .89-.63 1.61-1.44 1.61Z" />
+            </svg>
+          </a>
+          <a className="app__social" href="#" aria-label="Homepage" title="Homepage" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <circle cx="8" cy="8" r="6.4" />
+              <path d="M1.6 8h12.8M8 1.6c1.9 2 2.9 4.1 2.9 6.4S9.9 12.4 8 14.4C6.1 12.4 5.1 10.3 5.1 8S6.1 3.6 8 1.6Z" />
+            </svg>
+          </a>
+        </nav>
       </header>
 
       <div className="app__layout">
@@ -269,6 +292,10 @@ function App() {
                 </button>
               ))}
             </div>
+            <label className="checkbox-field" style={{ marginTop: '0.6rem' }}>
+              <input type="checkbox" checked={pianoLabels} onChange={(e) => setPianoLabels(e.target.checked)} />
+              Note names on keyboard
+            </label>
           </section>
 
           <section className="control-group">
@@ -352,7 +379,7 @@ function App() {
               </p>
             )}
             {!timer.expired && timerEnabled && <p className="grading-feedback__timer">Time left: {timer.remainingSeconds}s</p>}
-            <PianoKeyboard highlightedNotes={pianoHighlightedNotes} playedNotes={verifiedPitches} />
+            <PianoKeyboard highlightedNotes={pianoHighlightedNotes} playedNotes={verifiedPitches} showLabels={pianoLabels} />
             {timer.expired && !timerAutoContinue && (
               <button type="button" onClick={next}>
                 Continue

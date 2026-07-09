@@ -1,42 +1,71 @@
+/*
+ * ChordWarrior — "after-hours conservatory".
+ * The app is a grand piano under a single brass lamp: warm lacquer black,
+ * and the practice surface is always a sheet of ivory paper resting on the lid.
+ * Colors are drawn from the instrument itself — ivory & ebony keys, brass gilt,
+ * red hammer felt (incorrect), aged patina green (correct).
+ */
+
 :root {
   color-scheme: light dark;
+
+  /* The paper stage is fixed regardless of app theme — sheet music lives on paper,
+     and this keeps VexFlow's black noteheads legible in every mode. */
+  --paper: #f4ecd8;
+  --paper-raised: #fbf5e6;
+  --paper-ink: #2a2113;
+  --paper-line: #d8c7a2;
+  --paper-shadow: rgba(20, 14, 6, 0.45);
+
+  /* Warm-black lacquer default (dark). Light theme overrides below. */
+  --bg: #14110e;
+  --panel: #1c1813;
+  --border: #322b21;
+  --text: #f2ece0;
+  --muted: #a2937b;
+  --accent: #cd9c42;
+  --accent-ink: #14110e;
+  --correct: #7fae6b;
+  --incorrect: #cb5344;
+  --piano-key-white: #f2ece0;
+  --piano-key-black: #17130d;
+  --field-bg: #14110e;
 }
 
 :root[data-theme='dark'] {
-  --bg: #16181d;
-  --panel: #1e2128;
-  --border: #2e323b;
-  --text: #e8e9ec;
-  --muted: #9099a8;
-  --accent: #5b8cff;
-  --correct: #3ecf8e;
-  --incorrect: #ef5a6f;
-  --piano-key-white: #f4f4f4;
-  --piano-key-black: #1a1a1a;
+  --bg: #14110e;
+  --panel: #1c1813;
+  --border: #322b21;
+  --text: #f2ece0;
+  --muted: #a2937b;
+  --accent: #cd9c42;
+  --accent-ink: #14110e;
+  --correct: #7fae6b;
+  --incorrect: #cb5344;
+  --piano-key-white: #f2ece0;
+  --piano-key-black: #17130d;
+  --field-bg: #14110e;
 }
 
 :root[data-theme='light'] {
-  --bg: #f4f5f7;
-  --panel: #ffffff;
-  --border: #d7dbe2;
-  --text: #1b1e24;
-  --muted: #656d7a;
-  --accent: #3868e0;
-  --correct: #1f9d5c;
-  --incorrect: #d13a4f;
-  --piano-key-white: #ffffff;
-  --piano-key-black: #24262b;
-}
-
-* {
-  box-sizing: border-box;
+  /* An engraved recital program on ivory stock. */
+  --bg: #e7dcc6;
+  --panel: #f3ead6;
+  --border: #cbbb98;
+  --text: #241c11;
+  --muted: #7a6a4c;
+  --accent: #9a6f1f;
+  --accent-ink: #fbf5e6;
+  --correct: #4c7a3a;
+  --incorrect: #a83a2c;
+  --piano-key-white: #fbf5e6;
+  --piano-key-black: #241c11;
+  --field-bg: #fbf5e6;
 }
 
 body {
-  margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, sans-serif;
 }
 
 .app {
@@ -45,27 +74,82 @@ body {
   flex-direction: column;
 }
 
+/* --- Header: an engraved recital-card masthead ------------------------------ */
+
 .app__header {
-  padding: 1.25rem 1.5rem 0.5rem;
+  padding: 1.75rem 1.75rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.app__header::after {
+  /* A thin brass rule underscoring the masthead, like gilt on a program. */
+  content: '';
+  position: absolute;
+  left: 1.75rem;
+  bottom: -1px;
+  width: 3.5rem;
+  height: 2px;
+  background: var(--accent);
 }
 
 .app__header h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 .app__subtitle {
-  margin: 0.25rem 0 0;
+  margin: 0.4rem 0 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+/* Socials: small brass-gilt buttons, like engraving marks on the piano's fallboard. */
+.app__socials {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.app__social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.app__social:hover {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (max-width: 520px) {
+  .app__header {
+    flex-direction: column;
+  }
 }
 
 .app__layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 1rem;
-  padding: 1rem 1.5rem 1.5rem;
+  grid-template-columns: 288px 1fr;
+  gap: 1.25rem;
+  padding: 1.25rem 1.75rem 1.75rem;
 }
 
 @media (max-width: 800px) {
@@ -74,118 +158,166 @@ body {
   }
 }
 
+/* --- Left panel: the control desk ------------------------------------------- */
+
 .app__panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
+  border-radius: 6px;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.4rem;
   height: fit-content;
 }
 
+.control-group + .control-group,
+.generate-button + .control-group,
+.control-group + .generate-button {
+  border-top: 1px solid var(--border);
+  padding-top: 1.4rem;
+}
+
 .control-group h2 {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-  margin: 0 0 0.5rem;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  margin: 0 0 0.7rem;
+  font-weight: 600;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  margin-top: 0.6rem;
+  color: var(--muted);
 }
 
 .field select,
 .field input {
-  background: var(--bg);
+  background: var(--field-bg);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.4rem;
+  border-radius: 4px;
+  padding: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.field input[type='range'] {
+  padding: 0;
+  accent-color: var(--accent);
 }
 
 .checkbox-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .checkbox-field {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.checkbox-field input[type='checkbox'] {
+  accent-color: var(--accent);
 }
 
 .segmented {
   display: flex;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 5px;
   overflow: hidden;
 }
 
 .segmented__button {
   flex: 1;
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
   border: none;
   padding: 0.5rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: color 0.15s, background 0.15s;
+}
+
+.segmented__button:hover {
+  color: var(--text);
 }
 
 .segmented__button--active {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
+  font-weight: 600;
 }
 
 .generate-button {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
   border: none;
-  border-radius: 8px;
-  padding: 0.6rem;
+  border-radius: 5px;
+  padding: 0.7rem;
   cursor: pointer;
   font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+  transition: filter 0.15s;
+}
+
+.generate-button:hover {
+  filter: brightness(1.08);
 }
 
 .input-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.85rem;
-  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  margin-bottom: 0.5rem;
 }
 
 .input-status button {
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  padding: 0.28rem 0.7rem;
   cursor: pointer;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.input-status button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .error-text {
   color: var(--incorrect);
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   margin: 0 0 0.5rem;
 }
+
+/* --- Stage: the piano lid, holding a sheet of paper ------------------------- */
 
 .app__stage {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
+  border-radius: 6px;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.1rem;
   align-items: center;
 }
 
@@ -197,17 +329,25 @@ body {
 
 .mode-tabs__button {
   flex: 1;
-  background: var(--bg);
-  color: var(--text);
+  background: transparent;
+  color: var(--muted);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.5rem;
+  border-radius: 5px;
+  padding: 0.55rem;
   cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.mode-tabs__button:hover {
+  color: var(--text);
 }
 
 .mode-tabs__button--active {
   border-color: var(--accent);
   color: var(--accent);
+  font-weight: 600;
 }
 
 .clef-toggle {
@@ -216,13 +356,15 @@ body {
 }
 
 .clef-toggle__button {
-  background: var(--bg);
-  color: var(--text);
+  background: transparent;
+  color: var(--muted);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  padding: 0.35rem 0.8rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .clef-toggle__button--active {
@@ -230,28 +372,40 @@ body {
   color: var(--accent);
 }
 
+/* The signature: a sheet of ivory paper on the black lacquer lid. Fixed ivory
+   and ink in every theme — the music paper doesn't change with the app. */
 .stage-content {
-  min-height: 220px;
+  min-height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
+  background: var(--paper);
+  background-image: linear-gradient(180deg, var(--paper-raised), var(--paper));
+  color: var(--paper-ink);
+  border-radius: 3px;
+  padding: 1.75rem 1rem;
+  box-shadow: 0 10px 30px -12px var(--paper-shadow), inset 0 0 0 1px var(--paper-line);
 }
 
 .chord-notation-display {
-  font-size: 3rem;
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 11vw, 6.5rem);
   font-weight: 600;
+  color: var(--paper-ink);
+  line-height: 1;
+  letter-spacing: -0.01em;
 }
 
 .chord-notation-display--empty {
-  color: var(--muted);
+  color: var(--paper-line);
 }
 
 .listening-mode-display {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 .listening-mode-display__icon {
@@ -263,55 +417,77 @@ body {
   gap: 0.75rem;
 }
 
-.piano-keyboard {
-  display: block;
-  margin: 0 auto;
-  width: 100%;
-  height: auto;
-}
-
-.piano-keyboard__white-key {
-  stroke: var(--border);
-  stroke-width: 1;
-}
-
-.piano-keyboard__black-key {
-  stroke: #000;
-  stroke-width: 1;
-}
-
-.listening-mode-display button,
-.progression-nav button {
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
+/* Buttons that sit on the paper surface read as ink, not brass. */
+.listening-mode-display button {
+  background: transparent;
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line);
+  border-radius: 4px;
+  padding: 0.5rem 1.1rem;
   cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  transition: background 0.15s;
 }
+
+.listening-mode-display button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--paper-ink) 8%, transparent);
+}
+
+.staff-renderer svg {
+  max-width: 100%;
+}
+
+/* --- Below the sheet: navigation + the verdict tray ------------------------- */
 
 .progression-nav {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  font-size: 0.9rem;
+  gap: 1.25rem;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
   color: var(--muted);
 }
 
+.progression-nav button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.progression-nav button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.progression-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The verdict tray: a recessed slot in the lid where the piano's own keys
+   report the result — red felt for wrong, patina green for right. */
 .grading-feedback {
   align-self: stretch;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  font-size: 0.85rem;
+  border-radius: 5px;
+  padding: 0.85rem 1rem;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  color: var(--muted);
   text-align: center;
   transition: border-color 0.2s, background 0.2s;
 }
 
 .grading-feedback--correct {
   border-color: var(--correct);
-  background: color-mix(in srgb, var(--correct) 15%, var(--bg));
+  background: color-mix(in srgb, var(--correct) 14%, var(--bg));
 }
 
 .grading-feedback--incorrect {
@@ -320,26 +496,90 @@ body {
 }
 
 .grading-feedback__status {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
   font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.grading-feedback--correct .grading-feedback__status {
+  color: var(--correct);
+}
+
+.grading-feedback--incorrect .grading-feedback__status {
+  color: var(--incorrect);
 }
 
 .grading-feedback__timer {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
 }
 
 .grading-feedback button {
-  margin-top: 0.6rem;
+  margin-top: 0.7rem;
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
   border: none;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  padding: 0.5rem 1.1rem;
   cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
 }
 
-.staff-renderer svg {
-  max-width: 100%;
+/* --- Piano keyboard: ivory & ebony, felt/patina feedback ------------------- */
+
+.piano-keyboard {
+  display: block;
+  margin: 0.75rem auto 0;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+}
+
+.piano-keyboard__white-key {
+  stroke: #b9a986;
+  stroke-width: 1;
+}
+
+.piano-keyboard__black-key {
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.piano-keyboard__label {
+  font-family: var(--font-mono);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Fixed ink/ivory fills so labels stay legible on every key color (incl. felt/patina). */
+.piano-keyboard__label--white {
+  fill: #4a3d24;
+}
+
+.piano-keyboard__label--black {
+  fill: #ece1c8;
+}
+
+/* --- Quality floor: focus, motion ------------------------------------------ */
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.stage-content button:focus-visible {
+  outline-color: var(--paper-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }
